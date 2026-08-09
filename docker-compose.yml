@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  personalize-postgres:
+    image: postgres:15-alpine
+    container_name: personalize-postgres
+    environment:
+      POSTGRES_DB: personalize
+      POSTGRES_USER: personalize
+      POSTGRES_PASSWORD: personalize
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U personalize -d personalize"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  personalize-chromadb:
+    image: chromadb/chroma:latest
+    container_name: personalize-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  personalize-backend:
+    build: .
+    container_name: personalize-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://personalize-postgres:5432/personalize
+      SPRING_DATASOURCE_USERNAME: personalize
+      SPRING_DATASOURCE_PASSWORD: personalize
+      CHROMA_URL: http://personalize-chromadb:8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    depends_on:
+      personalize-postgres:
+        condition: service_healthy
+      personalize-chromadb:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  postgres_data:
+  chroma_data:

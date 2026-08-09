@@ -1,0 +1,340 @@
+<div class="dashboard-wrapper">
+  <!-- Top Navigation Bar -->
+  <nav class="navbar glass-panel">
+    <div class="nav-brand">
+      <span class="logo-text">Personalize <span class="logo-highlight">Or Perish</span></span>
+      <span class="role-badge">FACILITATOR CONTROL</span>
+    </div>
+    <div class="nav-user">
+      <span class="user-greeting">Welcome, Professor <strong>{{ currentUser()?.name }}</strong></span>
+      <button (click)="logout()" class="btn-logout">Logout</button>
+    </div>
+  </nav>
+
+  <div class="dashboard-content">
+    <!-- Tab Controls -->
+    <div class="tab-header glass-panel">
+      <button (click)="activeTab = 'analytics'" [class.active]="activeTab === 'analytics'" class="tab-btn">
+        <span class="tab-icon">📈</span> Class Analytics
+      </button>
+      <button (click)="activeTab = 'quizzes'" [class.active]="activeTab === 'quizzes'" class="tab-btn">
+        <span class="tab-icon">🎓</span> Manage Quizzes
+      </button>
+      <button (click)="activeTab = 'materials'" [class.active]="activeTab === 'materials'" class="tab-btn">
+        <span class="tab-icon">📚</span> Syllabus & RAG Materials
+      </button>
+    </div>
+
+    <!-- Workspace View -->
+    <div class="workspace-single">
+      
+      <!-- ================= CLASS ANALYTICS TAB ================= -->
+      <div *ngIf="activeTab === 'analytics'" class="tab-pane-content">
+        <div class="stats-row">
+          <div class="glass-panel stat-card">
+            <div class="stat-icon-wrap bg-indigo">📈</div>
+            <div class="stat-info">
+              <h3>Class Average</h3>
+              <p class="stat-value">{{ (facilitatorAnalytics?.averageScore || 0) | number:'1.0-1' }}%</p>
+            </div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-icon-wrap bg-cyan">👥</div>
+            <div class="stat-info">
+              <h3>Students Participating</h3>
+              <p class="stat-value">{{ facilitatorAnalytics?.numberOfStudents || 0 }}</p>
+            </div>
+          </div>
+          <div class="glass-panel stat-card">
+            <div class="stat-icon-wrap bg-purple">📇</div>
+            <div class="stat-info">
+              <h3>Created Quizzes</h3>
+              <p class="stat-value">{{ assessments.length }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <!-- Left Col: Weakest Topics and Stats -->
+          <div class="analytics-left">
+            <div class="glass-panel content-section">
+              <div class="section-title-wrap">
+                <h2>Common Learning Gaps</h2>
+                <p>Derived by processing all student assessment submissions.</p>
+              </div>
+
+              <div *ngIf="!facilitatorAnalytics?.commonLearningGaps || facilitatorAnalytics?.commonLearningGaps?.length === 0" class="empty-state-mini">
+                <p>No weakness signals detected yet.</p>
+              </div>
+
+              <div class="topic-bars">
+                <div *ngFor="let gap of facilitatorAnalytics?.commonLearningGaps" class="topic-bar-row">
+                  <div class="topic-bar-lbl">
+                    <span>{{ gap.topic }}</span>
+                    <span>{{ gap.count }} student(s)</span>
+                  </div>
+                  <div class="topic-bar-track">
+                    <!-- Red warning indicators for weak topics -->
+                    <div class="topic-bar-fill progress-low" style="width: 100%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Col: Toughest Questions list -->
+          <div class="analytics-right">
+            <div class="glass-panel content-section">
+              <div class="section-title-wrap">
+                <h2>Toughest Questions (High Failure Rate)</h2>
+                <p>Identified questions where students choose incorrect answers most frequently.</p>
+              </div>
+
+              <div *ngIf="!facilitatorAnalytics?.difficultQuestions || facilitatorAnalytics?.difficultQuestions?.length === 0" class="empty-state-mini">
+                <p>All questions are passing within acceptable thresholds.</p>
+              </div>
+
+              <div class="difficult-questions-list">
+                <div *ngFor="let q of facilitatorAnalytics?.difficultQuestions" class="difficult-q-card">
+                  <div class="q-failure-header">
+                    <span class="badge badge-high">Failure Rate: {{ (q.failureRate * 100) | number:'1.0-0' }}%</span>
+                  </div>
+                  <p class="q-text">"{{ q.questionText }}"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MANAGE QUIZZES TAB ================= -->
+      <div *ngIf="activeTab === 'quizzes'" class="tab-pane-content">
+        <div class="quizzes-workspace">
+          
+          <!-- Left side: List of Assessments -->
+          <div class="glass-panel quiz-list-section">
+            <div class="section-header">
+              <h2>Active Assessments</h2>
+              <button (click)="showCreateQuizForm = true" class="btn-primary btn-sm">+ New Quiz</button>
+            </div>
+
+            <div *ngIf="assessments.length === 0" class="empty-state-mini">
+              <p>No assessments created yet.</p>
+            </div>
+
+            <div class="quiz-items-list">
+              <div *ngFor="let quiz of assessments" 
+                   (click)="selectAssessment(quiz)" 
+                   class="quiz-list-item" 
+                   [class.selected]="selectedAssessment?.id === quiz.id">
+                <div>
+                  <h4>{{ quiz.title }}</h4>
+                  <p>{{ quiz.description }}</p>
+                </div>
+                <button (click)="deleteAssessment(quiz.id, $event)" class="btn-delete-icon">🗑</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: Edit selected or Create new -->
+          <div class="quiz-details-section">
+            
+            <!-- CREATE QUIZ FORM -->
+            <div *ngIf="showCreateQuizForm" class="glass-panel form-card">
+              <div class="form-card-header">
+                <h3>Create New Assessment Shell</h3>
+                <button (click)="showCreateQuizForm = false" class="btn-close">Cancel</button>
+              </div>
+
+              <form (ngSubmit)="onCreateQuizSubmit()" class="quiz-form">
+                <div class="form-group">
+                  <label for="quizTitle">Quiz Title</label>
+                  <input type="text" id="quizTitle" name="quizTitle" [(ngModel)]="newQuizTitle" required placeholder="e.g. OOP Polymorphism Test">
+                </div>
+                <div class="form-group">
+                  <label for="quizDesc">Description</label>
+                  <textarea id="quizDesc" name="quizDesc" [(ngModel)]="newQuizDesc" rows="3" placeholder="e.g. Assessment regarding overloading, dynamic binding and interfaces."></textarea>
+                </div>
+                <button type="submit" [disabled]="!newQuizTitle" class="btn-primary">Save Assessment</button>
+              </form>
+            </div>
+
+            <!-- ADD QUESTION TO SELECTED ASSESSMENT -->
+            <div *ngIf="selectedAssessment && !showCreateQuizForm" class="glass-panel question-editor-card">
+              <div class="editor-header">
+                <div>
+                  <span class="parent-quiz-tag">Editing Quiz:</span>
+                  <h3>{{ selectedAssessment.title }}</h3>
+                </div>
+              </div>
+
+              <div class="existing-questions">
+                <h4>Existing Questions ({{ selectedAssessmentQuestions?.length || 0 }})</h4>
+                <div *ngIf="selectedAssessmentQuestions?.length === 0" class="empty-state-mini">
+                  <p>No questions added to this quiz. Add one below!</p>
+                </div>
+                <div class="questions-mini-list">
+                  <div *ngFor="let eq of selectedAssessmentQuestions; let i = index" class="q-mini-item">
+                    <span>{{ i + 1 }}. {{ eq.questionText }}</span>
+                    <span class="mini-topic">{{ eq.topicName }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="editor-divider">
+
+              <!-- Add Question Form -->
+              <form (ngSubmit)="onAddQuestionSubmit()" class="question-form">
+                <h4>Add New Question</h4>
+                
+                <div class="form-group">
+                  <label for="qTopic">Academic Topic</label>
+                  <select id="qTopic" name="qTopic" [(ngModel)]="newQTopicId" required>
+                    <option *ngFor="let t of topics" [value]="t.id">{{ t.name }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="qText">Question Text</label>
+                  <input type="text" id="qText" name="qText" [(ngModel)]="newQText" required placeholder="What is the result of super keyword?">
+                </div>
+
+                <div class="options-grid">
+                  <div class="form-group">
+                    <label>Option A</label>
+                    <input type="text" name="opA" [(ngModel)]="newQOptionA" required placeholder="Option A">
+                  </div>
+                  <div class="form-group">
+                    <label>Option B</label>
+                    <input type="text" name="opB" [(ngModel)]="newQOptionB" required placeholder="Option B">
+                  </div>
+                  <div class="form-group">
+                    <label>Option C</label>
+                    <input type="text" name="opC" [(ngModel)]="newQOptionC" required placeholder="Option C">
+                  </div>
+                  <div class="form-group">
+                    <label>Option D</label>
+                    <input type="text" name="opD" [(ngModel)]="newQOptionD" required placeholder="Option D">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="qCorrect">Correct Option Choice</label>
+                  <select id="qCorrect" name="qCorrect" [(ngModel)]="newQCorrect" required>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                  </select>
+                </div>
+
+                <button type="submit" [disabled]="!newQText || !newQOptionA" class="btn-primary">+ Add Question</button>
+              </form>
+            </div>
+
+            <!-- Empty Details State -->
+            <div *ngIf="!selectedAssessment && !showCreateQuizForm" class="glass-panel empty-details-pane">
+              <span class="empty-icon">👈</span>
+              <h3>Select a quiz to manage questions</h3>
+              <p>Or click "+ New Quiz" to create a new assessment sheet.</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= SYLLABUS & RAG MATERIALS TAB ================= -->
+      <div *ngIf="activeTab === 'materials'" class="tab-pane-content">
+        <div class="materials-workspace">
+          
+          <!-- Document Upload & List Column -->
+          <div class="materials-col">
+            <div class="glass-panel content-section">
+              <h2>Syllabus Document Upload (RAG Context)</h2>
+              <p class="section-subtitle">Indexed into ChromaDB vector storage to train the Student AI Tutor.</p>
+
+              <form (ngSubmit)="onUploadDocument()" class="upload-form">
+                <div class="form-group">
+                  <label>Associate to Academic Topic</label>
+                  <select name="uploadTopic" [(ngModel)]="uploadTopicId" required>
+                    <option *ngFor="let t of topics" [value]="t.id">{{ t.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Select Syllabus Text/Markdown File</label>
+                  <input type="file" (change)="onFileSelected($event)" required class="file-input">
+                </div>
+                <button type="submit" [disabled]="!selectedFile || !uploadTopicId || isUploadingDoc" class="btn-primary">
+                  <span *ngIf="!isUploadingDoc">📤 Upload and Index</span>
+                  <span *ngIf="isUploadingDoc" class="spinner"></span>
+                </button>
+              </form>
+
+              <hr class="editor-divider">
+
+              <h3>Uploaded Course Syllabus Files</h3>
+              <div *ngIf="documents.length === 0" class="empty-state-mini">
+                <p>No syllabus materials indexed yet.</p>
+              </div>
+              <div class="documents-list">
+                <div *ngFor="let doc of documents" class="doc-list-item">
+                  <div class="doc-meta">
+                    <span class="doc-name">📄 {{ doc.filename }}</span>
+                    <span class="doc-topic-tag">{{ doc.topicName }}</span>
+                  </div>
+                  <button (click)="deleteDocument(doc.id)" class="btn-delete-icon">🗑</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Study Material Generator Column -->
+          <div class="materials-col">
+            <div class="glass-panel content-section">
+              <h2>AI Study Guide Builder (Gemini Engine)</h2>
+              <p class="section-subtitle">Instruct Google Gemini to write a structured guide. Results are saved in SQL and indexed in ChromaDB.</p>
+
+              <form (ngSubmit)="onGenerateMaterial()" class="generate-material-form">
+                <div class="form-group">
+                  <label>Select Topic Target</label>
+                  <select name="genTopic" [(ngModel)]="generateTopicId" required>
+                    <option *ngFor="let t of topics" [value]="t.id">{{ t.name }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Target Audience Difficulty</label>
+                  <select name="genDiff" [(ngModel)]="generateDifficulty" required>
+                    <option value="EASY">Beginner (Introductory)</option>
+                    <option value="MEDIUM">Intermediate (Core Concepts)</option>
+                    <option value="HARD">Advanced (Deep Dive)</option>
+                  </select>
+                </div>
+
+                <button type="submit" [disabled]="!generateTopicId || isGeneratingGuide" class="btn-primary">
+                  <span *ngIf="!isGeneratingGuide">⚡ Generate & Index Study Guide</span>
+                  <span *ngIf="isGeneratingGuide" class="spinner"></span>
+                </button>
+              </form>
+
+              <hr class="editor-divider">
+
+              <h3>Indexed AI Guides</h3>
+              <div *ngIf="studyMaterials.length === 0" class="empty-state-mini">
+                <p>No AI study guides generated yet.</p>
+              </div>
+              <div class="guides-list">
+                <div *ngFor="let guide of studyMaterials" class="guide-list-item">
+                  <h4>{{ guide.title }}</h4>
+                  <span class="badge badge-low">{{ guide.topicName }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

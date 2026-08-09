@@ -1,0 +1,52 @@
+<div class="auth-container">
+  <div class="glass-panel auth-card">
+    <div class="auth-header">
+      <div class="brand-logo">
+        <span class="logo-text">Personalize <span class="logo-highlight">Or Perish</span></span>
+      </div>
+      <p class="auth-subtitle">AI-Driven Academic Support System</p>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="auth-form">
+      <div class="form-group">
+        <label for="email">Institutional Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          [(ngModel)]="email" 
+          required 
+          #emailInput="ngModel"
+          placeholder="name@university.edu"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          [(ngModel)]="password" 
+          required
+          #passwordInput="ngModel"
+          placeholder="••••••••"
+        >
+      </div>
+
+      <div *ngIf="errorMessage" class="error-banner">
+        <span class="error-icon">⚠</span>
+        <span class="error-text">{{ errorMessage }}</span>
+      </div>
+
+      <button type="submit" [disabled]="loginForm.invalid || isLoading" class="btn-primary auth-submit">
+        <span *ngIf="!isLoading">Sign In</span>
+        <span *ngIf="isLoading" class="spinner"></span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>New to the platform? <a routerLink="/auth/register" class="register-link">Register here</a></p>
+    </div>
+  </div>
+</div>

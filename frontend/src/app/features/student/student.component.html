@@ -1,0 +1,308 @@
+<div class="dashboard-wrapper">
+  <!-- Top Navigation Bar -->
+  <nav class="navbar glass-panel">
+    <div class="nav-brand">
+      <span class="logo-text">Personalize <span class="logo-highlight">Or Perish</span></span>
+      <span class="role-badge">STUDENT PORTAL</span>
+    </div>
+    <div class="nav-user">
+      <span class="user-greeting">Welcome, <strong>{{ currentUser()?.name }}</strong></span>
+      <button (click)="logout()" class="btn-logout">Logout</button>
+    </div>
+  </nav>
+
+  <div class="dashboard-content">
+    <!-- Tab Controls -->
+    <div class="tab-header glass-panel">
+      <button (click)="activeTab = 'dashboard'" [class.active]="activeTab === 'dashboard'" class="tab-btn">
+        <span class="tab-icon">📊</span> Dashboard & Gaps
+      </button>
+      <button (click)="activeTab = 'assessments'" [class.active]="activeTab === 'assessments'" class="tab-btn">
+        <span class="tab-icon">📝</span> Assessments
+      </button>
+      <button (click)="activeTab = 'studyplan'" [class.active]="activeTab === 'studyplan'" class="tab-btn">
+        <span class="tab-icon">⚡</span> Personal Study Plan
+      </button>
+    </div>
+
+    <!-- MAIN BODY GRID (with Tutor Panel always available on the right) -->
+    <div class="workspace-grid">
+      
+      <!-- Left Feature Panes -->
+      <div class="feature-pane">
+        
+        <!-- ================= DASHBOARD TAB ================= -->
+        <div *ngIf="activeTab === 'dashboard'" class="tab-pane-content">
+          <div class="stats-row">
+            <div class="glass-panel stat-card">
+              <div class="stat-icon-wrap bg-indigo">📈</div>
+              <div class="stat-info">
+                <h3>Average Score</h3>
+                <p class="stat-value">{{ (studentAnalytics?.averageScore || 0) | number:'1.0-1' }}%</p>
+              </div>
+            </div>
+            <div class="glass-panel stat-card">
+              <div class="stat-icon-wrap bg-cyan">✓</div>
+              <div class="stat-info">
+                <h3>Quizzes Taken</h3>
+                <p class="stat-value">{{ studentAnalytics?.totalSubmissions || 0 }}</p>
+              </div>
+            </div>
+            <div class="glass-panel stat-card">
+              <div class="stat-icon-wrap bg-purple">⚡</div>
+              <div class="stat-info">
+                <h3>Gaps Identified</h3>
+                <p class="stat-value">{{ learningGaps.length }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gaps Explanations section -->
+          <div class="section-title-wrap">
+            <h2>Identified Learning Gaps & AI Diagnostic</h2>
+            <p>Calculated dynamically based on your quiz answers and interpreted by Google Gemini.</p>
+          </div>
+
+          <div *ngIf="learningGaps.length === 0" class="glass-panel empty-state">
+            <span class="empty-icon">🎉</span>
+            <h3>No learning gaps found!</h3>
+            <p>Complete an assessment to allow the system to identify potential knowledge gaps.</p>
+          </div>
+
+          <div *ngIf="learningGaps.length > 0" class="gaps-list">
+            <div *ngFor="let gap of learningGaps" class="glass-panel gap-card">
+              <div class="gap-card-header">
+                <div>
+                  <span class="gap-topic">{{ gap.topicName }}</span>
+                  <span class="badge" [ngClass]="'badge-' + gap.severity.toLowerCase()">
+                    {{ gap.severity }} PRIORITY
+                  </span>
+                </div>
+                <span class="gap-accuracy">Accuracy: {{ gap.accuracy | number:'1.0-0' }}%</span>
+              </div>
+              <div class="gap-progress-container">
+                <div class="gap-progress-bar" [style.width.%]="gap.accuracy" [ngClass]="getAccuracyClass(gap.accuracy)"></div>
+              </div>
+              <div class="gap-explanation">
+                <strong>AI Diagnostic Report:</strong>
+                <p class="explanation-text">{{ gap.explanation }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= ASSESSMENTS TAB ================= -->
+        <div *ngIf="activeTab === 'assessments'" class="tab-pane-content">
+          <div *ngIf="!activeAssessment" class="assessments-list-view">
+            <div class="section-title-wrap">
+              <h2>Available Course Assessments</h2>
+              <p>Test your knowledge to update your learning path and refresh your personalized study plan.</p>
+            </div>
+
+            <div *ngIf="assessments.length === 0" class="glass-panel empty-state">
+              <span class="empty-icon">📭</span>
+              <h3>No assessments available</h3>
+              <p>Your facilitator has not created any quizzes yet.</p>
+            </div>
+
+            <div class="assessments-grid">
+              <div *ngFor="let quiz of assessments" class="glass-panel assessment-card">
+                <h3>{{ quiz.title }}</h3>
+                <p class="quiz-desc">{{ quiz.description }}</p>
+                <div class="card-action">
+                  <button (click)="startAssessment(quiz)" class="btn-primary">Start Quiz</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVE QUIZ RUNNER -->
+          <div *ngIf="activeAssessment && !quizResult" class="glass-panel quiz-runner-card">
+            <div class="quiz-runner-header">
+              <div>
+                <h2>{{ activeAssessment.title }}</h2>
+                <p>Question {{ currentQuestionIndex + 1 }} of {{ activeQuestions.length }}</p>
+              </div>
+              <button (click)="cancelQuiz()" class="btn-secondary">Exit Quiz</button>
+            </div>
+
+            <div class="quiz-progress-bar-container">
+              <div class="quiz-progress-bar" [style.width.%]="((currentQuestionIndex + 1) / (activeQuestions.length || 1)) * 100"></div>
+            </div>
+
+            <div *ngIf="getCurrentQuestion() as q" class="quiz-question-wrap">
+              <span class="question-topic-tag">Topic: {{ q.topicName }}</span>
+              <h3 class="question-text">{{ q.questionText }}</h3>
+
+              <div class="options-list">
+                <label class="option-label" [class.selected]="selectedAnswers[q.id!] === 'A'">
+                  <input type="radio" [name]="'q_' + q.id" value="A" [(ngModel)]="selectedAnswers[q.id!]">
+                  <span class="option-letter">A</span> {{ q.optionA }}
+                </label>
+                <label class="option-label" [class.selected]="selectedAnswers[q.id!] === 'B'">
+                  <input type="radio" [name]="'q_' + q.id" value="B" [(ngModel)]="selectedAnswers[q.id!]">
+                  <span class="option-letter">B</span> {{ q.optionB }}
+                </label>
+                <label class="option-label" [class.selected]="selectedAnswers[q.id!] === 'C'">
+                  <input type="radio" [name]="'q_' + q.id" value="C" [(ngModel)]="selectedAnswers[q.id!]">
+                  <span class="option-letter">C</span> {{ q.optionC }}
+                </label>
+                <label class="option-label" [class.selected]="selectedAnswers[q.id!] === 'D'">
+                  <input type="radio" [name]="'q_' + q.id" value="D" [(ngModel)]="selectedAnswers[q.id!]">
+                  <span class="option-letter">D</span> {{ q.optionD }}
+                </label>
+              </div>
+            </div>
+
+            <div class="quiz-actions">
+              <button (click)="prevQuestion()" [disabled]="currentQuestionIndex === 0" class="btn-secondary">
+                Previous
+              </button>
+              
+              <button *ngIf="currentQuestionIndex < activeQuestions.length - 1" 
+                      (click)="nextQuestion()" 
+                      [disabled]="!selectedAnswers[getCurrentQuestion()?.id!]" 
+                      class="btn-primary">
+                Next Question
+              </button>
+              
+              <button *ngIf="currentQuestionIndex === activeQuestions.length - 1" 
+                      (click)="submitQuiz()" 
+                      [disabled]="!selectedAnswers[getCurrentQuestion()?.id!] || isSubmitting" 
+                      class="btn-primary btn-submit-quiz">
+                <span *ngIf="!isSubmitting">Submit Quiz</span>
+                <span *ngIf="isSubmitting" class="spinner"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- QUIZ RESULT SHEET -->
+          <div *ngIf="quizResult" class="glass-panel quiz-result-card">
+            <div class="result-celebration">
+              <span class="result-icon">📊</span>
+              <h2>Submission Success!</h2>
+              <p>Your assessment has been marked and logged in your profile.</p>
+            </div>
+
+            <div class="score-display-ring">
+              <span class="result-score">{{ quizResult.percentage | number:'1.0-0' }}%</span>
+              <span class="result-fraction">{{ quizResult.score }} / {{ quizResult.totalQuestions }} Correct</span>
+            </div>
+
+            <div class="result-details">
+              <p>The system has analyzed your results. Gaps identified have been computed, and explanations from Google Gemini are loading in the background.</p>
+            </div>
+
+            <div class="result-actions">
+              <button (click)="closeResults()" class="btn-primary">Go to Dashboard</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= STUDY PLAN TAB ================= -->
+        <div *ngIf="activeTab === 'studyplan'" class="tab-pane-content">
+          <div class="studyplan-header-row">
+            <div class="section-title-wrap">
+              <h2>Your Personalized AI Study Plan</h2>
+              <p>A customized study routine targeting your specific learning gaps.</p>
+            </div>
+            <button (click)="generateStudyPlan()" [disabled]="isGeneratingPlan" class="btn-primary">
+              <span *ngIf="!isGeneratingPlan">⚡ Re-Generate AI Study Plan</span>
+              <span *ngIf="isGeneratingPlan" class="spinner"></span>
+            </button>
+          </div>
+
+          <div *ngIf="!currentStudyPlan" class="glass-panel empty-state">
+            <span class="empty-icon">🗺</span>
+            <h3>No study plan generated</h3>
+            <p>Identify learning gaps first by taking quizzes, then click "Generate AI Study Plan".</p>
+          </div>
+
+          <div *ngIf="currentStudyPlan" class="study-plan-details">
+            <div class="glass-panel study-plan-meta">
+              <h3>{{ currentStudyPlan.title }}</h3>
+              <p>{{ currentStudyPlan.description }}</p>
+              <span class="plan-date">Generated: {{ currentStudyPlan.createdAt | date:'medium' }}</span>
+            </div>
+
+            <div class="study-items-list">
+              <div *ngFor="let item of currentStudyPlan.items" class="glass-panel study-item-card" [class.item-completed]="item.completed">
+                <div class="study-item-checkbox">
+                  <input 
+                    type="checkbox" 
+                    [id]="'item_' + item.id" 
+                    [checked]="item.completed"
+                    (change)="togglePlanItem(item.id, $event)"
+                  >
+                </div>
+                <div class="study-item-info">
+                  <div class="item-meta">
+                    <span class="item-topic">{{ item.topicName }}</span>
+                    <span class="badge badge-low">{{ item.estimatedMinutes }} mins</span>
+                    <span class="badge" [ngClass]="item.priority === 'HIGH' ? 'badge-high' : 'badge-medium'">
+                      {{ item.priority }} PRIORITY
+                    </span>
+                  </div>
+                  <p class="item-content">{{ item.content }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Drawer: AI Tutor Panel -->
+      <div class="tutor-drawer glass-panel">
+        <div class="tutor-header">
+          <h3>🤖 AI Tutor (RAG Support)</h3>
+          <p>Asks references dynamically from syllabus materials.</p>
+        </div>
+
+        <!-- Chat messages view -->
+        <div class="tutor-chat-body" #chatScrollContainer>
+          <div *ngIf="chatHistory.length === 0" class="chat-placeholder">
+            <span class="chat-placeholder-icon">💬</span>
+            <p>Ask a programming question! The AI Tutor uses uploaded course documents to verify the syllabus content.</p>
+          </div>
+
+          <div *ngFor="let chat of chatHistory" class="chat-bubble-wrap" [ngClass]="chat.sender">
+            <div class="chat-bubble">
+              <p class="chat-message">{{ chat.text }}</p>
+              
+              <!-- References list -->
+              <div *ngIf="chat.sources && chat.sources.length > 0" class="chat-sources">
+                <span class="sources-title">Verified Documents:</span>
+                <span *ngFor="let src of chat.sources" class="source-tag">📄 {{ src }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="isChatLoading" class="chat-bubble-wrap bot">
+            <div class="chat-bubble loading-bubble">
+              <span class="dot-bounce"></span>
+              <span class="dot-bounce"></span>
+              <span class="dot-bounce"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat form input -->
+        <form (ngSubmit)="sendChatMessage()" class="tutor-chat-input-form">
+          <input 
+            type="text" 
+            name="chatMessage" 
+            [(ngModel)]="chatInput" 
+            placeholder="Ask AI Tutor..." 
+            [disabled]="isChatLoading"
+            autocomplete="off"
+          >
+          <button type="submit" [disabled]="!chatInput.trim() || isChatLoading" class="btn-send-message">
+            Send
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>

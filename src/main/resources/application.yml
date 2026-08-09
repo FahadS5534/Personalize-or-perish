@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: personalize-or-perish
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/personalizedb}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+
+chroma:
+  url: ${CHROMA_URL:http://localhost:8000}
