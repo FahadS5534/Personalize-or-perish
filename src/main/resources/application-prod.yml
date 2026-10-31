@@ -1,7 +1,7 @@
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://db.jqyndhcemhfrsaqjoine.supabase.co:5432/postgres?sslmode=require}
-    username: ${DATABASE_USERNAME:postgres}
+    url: ${DATABASE_URL:jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require}
+    username: ${DATABASE_USERNAME:postgres.jqyndhcemhfrsaqjoine}
     password: ${DATABASE_PASSWORD:X2qouCicVYWb1DL3}
     driver-class-name: org.postgresql.Driver
   jpa:
@@ -40,4 +40,3 @@ chroma:
 jwt:
   secret: ${JWT_SECRET:defaultSecretKeyWithAtLeast256BitsOfLengthForSecureSigningOfTokens123456}
   expiration: ${JWT_EXPIRATION:86400000}
-

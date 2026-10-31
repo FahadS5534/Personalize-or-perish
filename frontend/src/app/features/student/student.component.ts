@@ -14,6 +14,7 @@ import {
   AnswerRequest,
   ChatResponse
 } from '../../core/models/models';
+import { environment } from '../../../environments/environment';
 
 interface ChatBubble {
   sender: 'student' | 'bot';
@@ -85,28 +86,28 @@ export class StudentComponent implements OnInit, AfterViewChecked {
     this.isLoading = true;
 
     // 1. Fetch Analytics
-    this.http.get<StudentDashboardAnalytics>(`http://localhost:8080/api/analytics/student/${studentId}`)
+    this.http.get<StudentDashboardAnalytics>(`${environment.apiUrl}/api/analytics/student/${studentId}`)
       .subscribe({
         next: (data) => this.studentAnalytics = data,
         error: (err) => console.error('Failed to load analytics', err)
       });
 
     // 2. Fetch Learning Gaps
-    this.http.get<LearningGap[]>(`http://localhost:8080/api/learning-gaps/student/${studentId}`)
+    this.http.get<LearningGap[]>(`${environment.apiUrl}/api/learning-gaps/student/${studentId}`)
       .subscribe({
         next: (data) => this.learningGaps = data,
         error: (err) => console.error('Failed to load gaps', err)
       });
 
     // 3. Fetch Assessments
-    this.http.get<Assessment[]>(`http://localhost:8080/api/assessments`)
+    this.http.get<Assessment[]>(`${environment.apiUrl}/api/assessments`)
       .subscribe({
         next: (data) => this.assessments = data,
         error: (err) => console.error('Failed to load assessments', err)
       });
 
     // 4. Fetch Latest Study Plan
-    this.http.get<StudyPlan>(`http://localhost:8080/api/study-plans/student/${studentId}/latest`)
+    this.http.get<StudyPlan>(`${environment.apiUrl}/api/study-plans/student/${studentId}/latest`)
       .subscribe({
         next: (data) => this.currentStudyPlan = data,
         error: (err) => {
@@ -129,7 +130,7 @@ export class StudentComponent implements OnInit, AfterViewChecked {
     this.quizResult = null;
     this.activeQuestions = [];
 
-    this.http.get<Question[]>(`http://localhost:8080/api/assessments/${assessment.id}/questions`)
+    this.http.get<Question[]>(`${environment.apiUrl}/api/assessments/${assessment.id}/questions`)
       .subscribe({
         next: (data) => {
           this.activeQuestions = data;
@@ -169,7 +170,7 @@ export class StudentComponent implements OnInit, AfterViewChecked {
       });
     });
 
-    this.http.post<SubmissionResponse>(`http://localhost:8080/api/submissions`, {
+    this.http.post<SubmissionResponse>(`${environment.apiUrl}/api/submissions`, {
       assessmentId: this.activeAssessment.id,
       answers: answersList
     }).subscribe({
@@ -205,7 +206,7 @@ export class StudentComponent implements OnInit, AfterViewChecked {
     if (!studentId) return;
 
     this.isGeneratingPlan = true;
-    this.http.post<StudyPlan>(`http://localhost:8080/api/study-plans/generate/${studentId}`, {})
+    this.http.post<StudyPlan>(`${environment.apiUrl}/api/study-plans/generate/${studentId}`, {})
       .subscribe({
         next: (data) => {
           this.isGeneratingPlan = false;
@@ -222,7 +223,7 @@ export class StudentComponent implements OnInit, AfterViewChecked {
     if (!this.currentStudyPlan) return;
 
     const completed = event.target.checked;
-    this.http.put<StudyPlan>(`http://localhost:8080/api/study-plans/${this.currentStudyPlan.id}/items/${itemId}?completed=${completed}`, {})
+    this.http.put<StudyPlan>(`${environment.apiUrl}/api/study-plans/${this.currentStudyPlan.id}/items/${itemId}?completed=${completed}`, {})
       .subscribe({
         next: (data) => {
           this.currentStudyPlan = data;
@@ -248,7 +249,7 @@ export class StudentComponent implements OnInit, AfterViewChecked {
       topicId = this.learningGaps[0].topicId;
     }
 
-    this.http.post<ChatResponse>(`http://localhost:8080/api/tutor/chat`, {
+    this.http.post<ChatResponse>(`${environment.apiUrl}/api/tutor/chat`, {
       message: message,
       topicId: topicId
     }).subscribe({

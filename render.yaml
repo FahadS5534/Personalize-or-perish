@@ -14,9 +14,9 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DATABASE_URL
-        value: jdbc:postgresql://db.jqyndhcemhfrsaqjoine.supabase.co:5432/postgres?sslmode=require
+        value: jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require
       - key: DATABASE_USERNAME
-        value: postgres
+        value: postgres.jqyndhcemhfrsaqjoine
       - key: DATABASE_PASSWORD
         value: X2qouCicVYWb1DL3
       - key: JWT_SECRET
@@ -25,4 +25,3 @@ services:
         sync: false
       - key: CHROMA_URL
         value: http://localhost:8000
-

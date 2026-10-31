@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
 import javax.sql.DataSource;
+import java.net.InetAddress;
 import java.net.URI;
 
 @Configuration
@@ -67,9 +68,25 @@ public class DatabaseConfig {
                 }
             }
         } else if (rawUrl != null && rawUrl.startsWith("jdbc:postgresql:") && !rawUrl.contains("sslmode=")) {
-            if (rawUrl.contains("supabase.co") || rawUrl.contains("render.com") || rawUrl.contains("neon.tech")) {
+            if (rawUrl.contains("supabase.co") || rawUrl.contains("supabase.com") || rawUrl.contains("render.com") || rawUrl.contains("neon.tech")) {
                 jdbcUrl = rawUrl.contains("?") ? rawUrl + "&sslmode=require" : rawUrl + "?sslmode=require";
             }
+        }
+
+        // Check if connecting via transaction pooler (port 6543) - disable prepared statements cache
+        if (jdbcUrl != null && jdbcUrl.contains(":6543") && !jdbcUrl.contains("prepareThreshold=")) {
+            jdbcUrl += jdbcUrl.contains("?") ? "&prepareThreshold=0" : "?prepareThreshold=0";
+        }
+
+        // Warn if user is attempting to use direct db.[ref].supabase.co in an IPv4-only environment
+        if (jdbcUrl != null && jdbcUrl.contains("db.") && jdbcUrl.contains(".supabase.co")) {
+            log.warn("================================================================================");
+            log.warn("ATTENTION: You are using the Supabase DIRECT connection URL ('db.<ref>.supabase.co').");
+            log.warn("Supabase direct URLs only provide IPv6 addresses. If your hosting environment (e.g. Render Free Tier)");
+            log.warn("does not support IPv6 routing, connections will fail with 'Network unreachable'.");
+            log.warn("SOLUTION: In Supabase Dashboard, go to Project Settings -> Database -> Connection string,");
+            log.warn("switch to the 'Pooler' tab (Session mode), and use the IPv4 pooler URL.");
+            log.warn("================================================================================");
         }
 
         String maskedUrl = (jdbcUrl != null) ? jdbcUrl.replaceAll(":[^/@]+@", ":***@") : "null";
@@ -79,6 +96,9 @@ public class DatabaseConfig {
         config.setUsername(user);
         config.setPassword(pass);
         config.setDriverClassName(driverClassName);
+
+        // Don't fail-fast crash the JVM immediately on startup if DB is waking up or temporarily unreachable
+        config.setInitializationFailTimeout(-1);
 
         // Connection pool optimization for cloud databases like Supabase
         config.setMaximumPoolSize(10);
@@ -90,4 +110,3 @@ public class DatabaseConfig {
         return new HikariDataSource(config);
     }
 }
-

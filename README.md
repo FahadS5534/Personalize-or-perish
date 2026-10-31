@@ -20,7 +20,7 @@ Personalize or Perish is an AI-powered academic support platform designed to ide
 
 * **Backend:** Java 21, Spring Boot 3.3.2, Spring Security (JWT), Spring Data JPA, Spring Boot Actuator
 * **Frontend:** Angular 18 (Standalone Components, Signals state management)
-* **Databases:** PostgreSQL / Supabase (Relational), ChromaDB (Vector DB)
+* **Databases:** PostgreSQL / Supabase Pooler (Relational), ChromaDB (Vector DB)
 * **AI Engine:** Google Gemini API (`gemini-1.5-flash` for generation, `text-embedding-004` for 768-dim embeddings)
 * **Infrastructure:** Docker, Docker Compose, Maven, Node.js, Render Blueprint
 
@@ -54,8 +54,8 @@ graph TD
 Create a `.env` file in the root directory (based on `.env.example`):
 ```env
 PORT=8080
-DATABASE_URL=jdbc:postgresql://db.jqyndhcemhfrsaqjoine.supabase.co:5432/postgres?sslmode=require
-DATABASE_USERNAME=postgres
+DATABASE_URL=jdbc:postgresql://aws-1-eu-west-3.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_USERNAME=postgres.jqyndhcemhfrsaqjoine
 DATABASE_PASSWORD=your_database_password
 JWT_SECRET=super_secret_jwt_sign_key_should_be_long_enough
 GEMINI_API_KEY=your_gemini_api_key_here
@@ -93,7 +93,7 @@ This repository includes a [`render.yaml`](file:///d:/Personalize-or-Perish/rend
 3. Select your repository. Render will automatically detect `render.yaml` and configure:
    - **Environment:** Docker (`Dockerfile`)
    - **Health Check Path:** `/actuator/health`
-   - **Database Connection:** Pre-configured with Supabase PostgreSQL (SSL enabled).
+   - **Database Connection:** Pre-configured with Supabase IPv4 Pooler (`aws-1-eu-west-3.pooler.supabase.com`).
    - **JWT Secret:** Automatically generated securely.
 4. Set your `GEMINI_API_KEY` in the Render environment variables prompt.
 5. Click **Apply** to deploy. Once live, Render will verify `/actuator/health` and direct traffic to your service.

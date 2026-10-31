@@ -12,6 +12,7 @@ import {
   StudyMaterial, 
   FacilitatorAnalytics 
 } from '../../core/models/models';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-facilitator',
@@ -28,48 +29,47 @@ export class FacilitatorComponent implements OnInit {
   // Signalled user details
   currentUser = this.authService.currentUser;
 
-  // View tabs
-  activeTab = 'analytics';
+  // Active Tab
+  activeTab = 'quizzes'; // 'quizzes' | 'documents' | 'materials'
 
-  // Academic lists
+  // Data lists
   topics: Topic[] = [];
   assessments: Assessment[] = [];
   documents: DocumentResponse[] = [];
   studyMaterials: StudyMaterial[] = [];
 
-  // Selection
+  // Selected for drill-down
   selectedAssessment: Assessment | null = null;
   selectedAssessmentQuestions: Question[] = [];
   facilitatorAnalytics: FacilitatorAnalytics | null = null;
 
-  // Form toggles
+  // Create Quiz Form
   showCreateQuizForm = false;
-
-  // Form states: New Quiz
   newQuizTitle = '';
   newQuizDesc = '';
 
-  // Form states: New Question
-  newQTopicId: number | null = null;
+  // Add Question Form
   newQText = '';
   newQOptionA = '';
   newQOptionB = '';
   newQOptionC = '';
   newQOptionD = '';
   newQCorrect: 'A' | 'B' | 'C' | 'D' = 'A';
+  newQTopicId: number | null = null;
 
-  // Form states: Document Upload
-  uploadTopicId: number | null = null;
+  // Document Upload State
   selectedFile: File | null = null;
+  uploadTopicId: number | null = null;
   isUploadingDoc = false;
 
-  // Form states: Material Generator
+  // Study Material Generator State
   generateTopicId: number | null = null;
-  generateDifficulty: 'EASY' | 'MEDIUM' | 'HARD' = 'MEDIUM';
+  generateDifficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' = 'INTERMEDIATE';
   isGeneratingGuide = false;
 
   ngOnInit() {
-    if (!this.currentUser()) {
+    const user = this.currentUser();
+    if (!user || user.role !== 'FACILITATOR') {
       this.router.navigate(['/auth/login']);
       return;
     }
@@ -82,7 +82,7 @@ export class FacilitatorComponent implements OnInit {
 
   // Loaders
   private loadTopics() {
-    this.http.get<Topic[]>('http://localhost:8080/api/topics')
+    this.http.get<Topic[]>(`${environment.apiUrl}/api/topics`)
       .subscribe({
         next: (data) => {
           this.topics = data;
@@ -97,7 +97,7 @@ export class FacilitatorComponent implements OnInit {
   }
 
   private loadAssessments() {
-    this.http.get<Assessment[]>('http://localhost:8080/api/assessments')
+    this.http.get<Assessment[]>(`${environment.apiUrl}/api/assessments`)
       .subscribe({
         next: (data) => {
           this.assessments = data;
@@ -111,7 +111,7 @@ export class FacilitatorComponent implements OnInit {
   }
 
   private loadDocuments() {
-    this.http.get<DocumentResponse[]>('http://localhost:8080/api/documents')
+    this.http.get<DocumentResponse[]>(`${environment.apiUrl}/api/documents`)
       .subscribe({
         next: (data) => this.documents = data,
         error: (err) => console.error('Failed to load documents', err)
@@ -119,7 +119,7 @@ export class FacilitatorComponent implements OnInit {
   }
 
   private loadStudyMaterials() {
-    this.http.get<StudyMaterial[]>('http://localhost:8080/api/study-materials')
+    this.http.get<StudyMaterial[]>(`${environment.apiUrl}/api/study-materials`)
       .subscribe({
         next: (data) => this.studyMaterials = data,
         error: (err) => console.error('Failed to load study materials', err)
@@ -134,14 +134,14 @@ export class FacilitatorComponent implements OnInit {
     this.showCreateQuizForm = false;
 
     // Load Questions
-    this.http.get<Question[]>(`http://localhost:8080/api/assessments/${assessment.id}/questions`)
+    this.http.get<Question[]>(`${environment.apiUrl}/api/assessments/${assessment.id}/questions`)
       .subscribe({
         next: (data) => this.selectedAssessmentQuestions = data,
         error: (err) => console.error('Failed to load assessment questions', err)
       });
 
     // Load Analytics
-    this.http.get<FacilitatorAnalytics>(`http://localhost:8080/api/analytics/assessment/${assessment.id}`)
+    this.http.get<FacilitatorAnalytics>(`${environment.apiUrl}/api/analytics/assessment/${assessment.id}`)
       .subscribe({
         next: (data) => this.facilitatorAnalytics = data,
         error: (err) => {
@@ -163,7 +163,7 @@ export class FacilitatorComponent implements OnInit {
   onCreateQuizSubmit() {
     if (!this.newQuizTitle) return;
 
-    this.http.post<Assessment>('http://localhost:8080/api/assessments', {
+    this.http.post<Assessment>(`${environment.apiUrl}/api/assessments`, {
       title: this.newQuizTitle,
       description: this.newQuizDesc
     }).subscribe({
@@ -182,7 +182,7 @@ export class FacilitatorComponent implements OnInit {
     event.stopPropagation(); // Stop selection trigger
     if (!confirm('Are you sure you want to delete this assessment?')) return;
 
-    this.http.delete(`http://localhost:8080/api/assessments/${id}`)
+    this.http.delete(`${environment.apiUrl}/api/assessments/${id}`)
       .subscribe({
         next: () => {
           if (this.selectedAssessment?.id === id) {
@@ -200,7 +200,7 @@ export class FacilitatorComponent implements OnInit {
   onAddQuestionSubmit() {
     if (!this.selectedAssessment || !this.newQTopicId) return;
 
-    this.http.post<Question>(`http://localhost:8080/api/assessments/${this.selectedAssessment.id}/questions`, {
+    this.http.post<Question>(`${environment.apiUrl}/api/assessments/${this.selectedAssessment.id}/questions`, {
       topicId: this.newQTopicId,
       questionText: this.newQText,
       optionA: this.newQOptionA,
@@ -240,7 +240,7 @@ export class FacilitatorComponent implements OnInit {
     formData.append('file', this.selectedFile);
     formData.append('topicId', this.uploadTopicId.toString());
 
-    this.http.post<DocumentResponse>('http://localhost:8080/api/documents/upload', formData)
+    this.http.post<DocumentResponse>(`${environment.apiUrl}/api/documents/upload`, formData)
       .subscribe({
         next: () => {
           this.isUploadingDoc = false;
@@ -258,7 +258,7 @@ export class FacilitatorComponent implements OnInit {
   deleteDocument(id: number) {
     if (!confirm('Are you sure you want to delete this document context from vector index?')) return;
 
-    this.http.delete(`http://localhost:8080/api/documents/${id}`)
+    this.http.delete(`${environment.apiUrl}/api/documents/${id}`)
       .subscribe({
         next: () => this.loadDocuments(),
         error: (err) => alert('Failed to delete document: ' + err.message)
@@ -270,7 +270,7 @@ export class FacilitatorComponent implements OnInit {
     if (!this.generateTopicId) return;
 
     this.isGeneratingGuide = true;
-    this.http.post<StudyMaterial>('http://localhost:8080/api/study-materials/generate', {
+    this.http.post<StudyMaterial>(`${environment.apiUrl}/api/study-materials/generate`, {
       topicId: this.generateTopicId,
       difficulty: this.generateDifficulty
     }).subscribe({
