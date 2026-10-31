@@ -16,10 +16,29 @@ spring:
         format_sql: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
 
 gemini:
-  api-key: ${GEMINI_API_KEY}
+  api-key: ${GEMINI_API_KEY:}
 
 chroma:
   url: ${CHROMA_URL:http://localhost:8000}
+
+jwt:
+  secret: ${JWT_SECRET:defaultSecretKeyWithAtLeast256BitsOfLengthForSecureSigningOfTokens123456}
+  expiration: ${JWT_EXPIRATION:86400000}

@@ -28,5 +28,9 @@ target/
 ### VS Code ###
 .vscode/
 
+### Environment & Secrets ###
+.env
+.env.local
+
 ### Custom ###
 *.log
