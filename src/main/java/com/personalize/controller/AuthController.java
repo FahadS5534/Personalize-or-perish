@@ -3,6 +3,7 @@ package com.personalize.controller;
 import com.personalize.dto.auth.AuthResponse;
 import com.personalize.dto.auth.LoginRequest;
 import com.personalize.dto.auth.RegisterRequest;
+import com.personalize.entity.Role;
 import com.personalize.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,5 +25,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/guest")
+    public ResponseEntity<AuthResponse> guestLogin(@RequestParam(required = false, defaultValue = "STUDENT") Role role) {
+        return ResponseEntity.ok(authService.guestLogin(role));
     }
 }

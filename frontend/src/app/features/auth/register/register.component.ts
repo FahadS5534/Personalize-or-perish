@@ -30,12 +30,24 @@ export class RegisterComponent {
     this.successMessage = '';
 
     this.authService.register(this.name, this.email, this.password, this.role).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.isLoading = false;
-        this.successMessage = 'Account created successfully! Redirecting to login...';
-        setTimeout(() => {
-          this.router.navigate(['/auth/login']);
-        }, 1500);
+        this.successMessage = 'Account created successfully! Redirecting...';
+        const token = res?.accessToken || res?.token;
+        if (token) {
+          this.authService.saveToken(token);
+          setTimeout(() => {
+            if (this.role === 'FACILITATOR') {
+              this.router.navigate(['/facilitator']);
+            } else {
+              this.router.navigate(['/student']);
+            }
+          }, 800);
+        } else {
+          setTimeout(() => {
+            this.router.navigate(['/auth/login']);
+          }, 1200);
+        }
       },
       error: (err) => {
         this.isLoading = false;

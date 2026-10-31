@@ -3,6 +3,7 @@ package com.personalize.service;
 import com.personalize.dto.auth.AuthResponse;
 import com.personalize.dto.auth.LoginRequest;
 import com.personalize.dto.auth.RegisterRequest;
+import com.personalize.entity.Role;
 import com.personalize.entity.User;
 import com.personalize.exception.BadRequestException;
 import com.personalize.repository.UserRepository;
@@ -15,6 +16,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -39,14 +43,9 @@ public class AuthService {
                 .role(request.getRole())
                 .build();
 
-        userRepository.save(user);
+        user = userRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        String jwtToken = jwtService.generateToken(userDetails);
-
-        return AuthResponse.builder()
-                .accessToken(jwtToken)
-                .build();
+        return createAuthResponse(user);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -54,14 +53,54 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
                         request.getPassword()
-                    )
+                )
         );
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
-        String jwtToken = jwtService.generateToken(userDetails);
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        return createAuthResponse(user);
+    }
+
+    @Transactional
+    public AuthResponse guestLogin(Role role) {
+        Role targetRole = (role != null) ? role : Role.STUDENT;
+        String email = (targetRole == Role.FACILITATOR) 
+                ? "guest.facilitator@personalize.io" 
+                : "guest.student@personalize.io";
+        String name = (targetRole == Role.FACILITATOR) ? "Guest Facilitator" : "Guest Student";
+
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            User newUser = User.builder()
+                    .name(name)
+                    .email(email)
+                    .password(passwordEncoder.encode("GuestSecret123!"))
+                    .role(targetRole)
+                    .build();
+            return userRepository.save(newUser);
+        });
+
+        return createAuthResponse(user);
+    }
+
+    private AuthResponse createAuthResponse(User user) {
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("userId", user.getId());
+        extraClaims.put("role", user.getRole().name());
+        extraClaims.put("name", user.getName());
+        extraClaims.put("email", user.getEmail());
+
+        String jwtToken = jwtService.generateToken(extraClaims, userDetails);
 
         return AuthResponse.builder()
                 .accessToken(jwtToken)
+                .token(jwtToken)
+                .userId(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
                 .build();
     }
 }

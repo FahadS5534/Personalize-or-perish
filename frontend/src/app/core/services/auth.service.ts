@@ -23,16 +23,49 @@ export class AuthService {
     this.loadToken();
   }
 
-  register(name: string, email: string, password: String, role: 'STUDENT' | 'FACILITATOR'): Observable<User> {
-    return this.http.post<User>(`${this.apiUrl}/register`, { name, email, password, role });
-  }
-
-  login(email: string, password: String): Observable<{ token: string }> {
-    return this.http.post<{ token: string }>(`${this.apiUrl}/login`, { email, password }).pipe(
+  register(name: string, email: string, password: String, role: 'STUDENT' | 'FACILITATOR'): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/register`, { name, email, password, role }).pipe(
       tap(res => {
-        this.saveToken(res.token);
+        const token = res?.accessToken || res?.token;
+        if (token) {
+          this.saveToken(token);
+        }
       })
     );
+  }
+
+  login(email: string, password: String): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/login`, { email, password }).pipe(
+      tap(res => {
+        const token = res?.accessToken || res?.token;
+        if (token) {
+          this.saveToken(token);
+        }
+      })
+    );
+  }
+
+  guestLogin(role: 'STUDENT' | 'FACILITATOR' = 'STUDENT'): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/guest?role=${role}`, {}).pipe(
+      tap(res => {
+        const token = res?.accessToken || res?.token;
+        if (token) {
+          this.saveToken(token);
+        }
+      })
+    );
+  }
+
+  // Fallback demo/guest sign-in (e.g. if backend is cold-starting)
+  setGuestUser(role: 'STUDENT' | 'FACILITATOR') {
+    const isStudent = role === 'STUDENT';
+    const fakeToken = this.createMockJwt({
+      userId: isStudent ? 1 : 2,
+      sub: isStudent ? 'guest.student@personalize.io' : 'guest.facilitator@personalize.io',
+      name: isStudent ? 'Guest Student' : 'Guest Facilitator',
+      role: role
+    });
+    this.saveToken(fakeToken);
   }
 
   logout() {
@@ -41,7 +74,8 @@ export class AuthService {
     this.router.navigate(['/auth/login']);
   }
 
-  private saveToken(token: string) {
+  saveToken(token: string) {
+    if (!token) return;
     localStorage.setItem('access_token', token);
     this.decodeAndSetUser(token);
   }
@@ -58,21 +92,49 @@ export class AuthService {
   }
 
   private decodeAndSetUser(token: string) {
-    const payloadBase64 = token.split('.')[1];
-    const payloadJson = atob(payloadBase64);
-    const payload = JSON.parse(payloadJson);
+    if (!token || typeof token !== 'string') return;
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payloadJson = decodeURIComponent(atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(payloadJson);
 
-    // Mappings from standard JWT claim structures
-    const role = payload.role || (payload.roles && payload.roles[0]) || 'STUDENT';
-    const name = payload.name || payload.sub || 'User';
+      let role = payload.role;
+      if (!role && payload.roles && payload.roles.length > 0) {
+        role = payload.roles[0].replace('ROLE_', '');
+      }
+      role = (role || 'STUDENT').toUpperCase();
 
-    this.currentUser.set({
-      id: payload.userId || 0,
-      email: payload.sub || '',
-      name: name,
-      role: role as 'STUDENT' | 'FACILITATOR' | 'ADMIN',
-      token: token
-    });
+      const name = payload.name || payload.sub || 'User';
+      const userId = Number(payload.userId || payload.id || 1);
+
+      this.currentUser.set({
+        id: userId,
+        email: payload.sub || payload.email || '',
+        name: name,
+        role: role as 'STUDENT' | 'FACILITATOR' | 'ADMIN',
+        token: token
+      });
+    } catch (e) {
+      console.error('Failed to decode JWT token:', e);
+      this.logout();
+    }
+  }
+
+  private createMockJwt(claims: { userId: number; sub: string; name: string; role: string }): string {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify({
+      userId: claims.userId,
+      sub: claims.sub,
+      name: claims.name,
+      role: claims.role,
+      exp: Math.floor(Date.now() / 1000) + 86400
+    }));
+    return `${header}.${payload}.mockSignature`;
   }
 
   getToken(): string | null {

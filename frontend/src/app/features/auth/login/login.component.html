@@ -43,6 +43,22 @@
         <span *ngIf="!isLoading">Sign In</span>
         <span *ngIf="isLoading" class="spinner"></span>
       </button>
+
+      <div class="auth-divider">
+        <span>OR</span>
+      </div>
+
+      <div class="guest-section">
+        <p class="guest-title">Quick Guest Access</p>
+        <div class="guest-btn-grid">
+          <button type="button" (click)="onGuestSignIn('STUDENT')" [disabled]="isLoading" class="btn-guest student-guest">
+            <span class="guest-icon">🎓</span> Guest Student
+          </button>
+          <button type="button" (click)="onGuestSignIn('FACILITATOR')" [disabled]="isLoading" class="btn-guest facilitator-guest">
+            <span class="guest-icon">👨‍🏫</span> Guest Facilitator
+          </button>
+        </div>
+      </div>
     </form>
 
     <div class="auth-footer">
