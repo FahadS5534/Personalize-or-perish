@@ -85,18 +85,27 @@ npm start
 
 ## ☁️ Deploying to Render
 
-This repository includes a [`render.yaml`](file:///d:/Personalize-or-Perish/render.yaml) Blueprint for one-click deployment.
+This repository includes a [`render.yaml`](file:///d:/Personalize-or-Perish/render.yaml) Blueprint that deploys both the **Backend API** and the **Angular Frontend** in one click.
+
+### Services Defined:
+1. **`personalize-or-perish` (Backend Web Service):**
+   - **Environment:** Docker (`Dockerfile`)
+   - **Health Check Path:** `/actuator/health`
+   - **Database:** Supabase IPv4 Pooler (`aws-1-eu-west-3.pooler.supabase.com:5432`)
+   - **Security:** Auto-generated JWT secret
+2. **`personalize-frontend` (Frontend Static Site):**
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm install && npm run build`
+   - **Publish Directory:** `./dist/frontend/browser`
+   - **SPA Routing:** Configured with rewrite rule `/* -> /index.html` to avoid 404s on browser refresh.
+   - **Target API:** Pre-configured to `https://personalize-or-perish.onrender.com`.
 
 ### Steps:
 1. Push your changes to your Git repository (GitHub/GitLab).
 2. Go to the **Render Dashboard** and click **New > Blueprint**.
-3. Select your repository. Render will automatically detect `render.yaml` and configure:
-   - **Environment:** Docker (`Dockerfile`)
-   - **Health Check Path:** `/actuator/health`
-   - **Database Connection:** Pre-configured with Supabase IPv4 Pooler (`aws-1-eu-west-3.pooler.supabase.com`).
-   - **JWT Secret:** Automatically generated securely.
-4. Set your `GEMINI_API_KEY` in the Render environment variables prompt.
-5. Click **Apply** to deploy. Once live, Render will verify `/actuator/health` and direct traffic to your service.
+3. Select your repository. Render will automatically detect `render.yaml` and configure both services.
+4. When prompted for `GEMINI_API_KEY`, enter your Gemini API key (or leave empty if using mock mode).
+5. Click **Apply**. Both your backend API and frontend client will build and deploy!
 
 ---
 

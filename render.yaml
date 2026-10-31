@@ -1,5 +1,5 @@
 services:
-  # Spring Boot 3 Backend Web Service
+  # 1. Spring Boot 3 Backend API (Docker Web Service)
   - type: web
     name: personalize-or-perish
     runtime: docker
@@ -25,3 +25,16 @@ services:
         sync: false
       - key: CHROMA_URL
         value: http://localhost:8000
+
+  # 2. Angular 18 Frontend Client (Static Site)
+  - type: web
+    name: personalize-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist/frontend/browser
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
